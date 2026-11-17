@@ -31,12 +31,17 @@ pending_questions:
   start_which: Which workout to start. Any reply becomes the name.
 
 # Text normalization, applied before matching, in this order:
-#   1. filler removed   2. phrase synonyms (contain a space)   3. word synonyms
-#   4. number words -> digits (21 and up are combined in code)
-# Format of each group: canonical: [synonyms]
+#   0. digit cleanup   1. filler removed   2. phrase synonyms (contain a space)
+#   3. word synonyms   4. number words -> digits (21 and up are combined in code)
+# Format of each synonym group: canonical: [synonyms]
 # A synonym with a space is phrase level; a single word is word level.
 # Word level is what makes "swap this" become "alternate this".
 normalization:
+  digit_cleanup:
+    - description: No clock times or spoken times in commands, so a phone's "1:30" means the number 130. The timer reads its own time outside the command bar.
+      pattern: '\b(\d+):(\d{2})\b'
+      replace: '\1\2'
+
   filler:   # "just log it" -> "log it"
     - please
     - can you
@@ -147,6 +152,7 @@ shared_responses:
 groups:
   # ---------------------------------------------------------------- safety
   - id: safety
+    description: Controls liability. If someone mentions pain, dizziness, injury or similar, it stops everything and tells them to get help from a qualified professional. It gives no advice and always wins over every other command.
     priority: 1
     defaults: {match_type: keyword, requires_state: any, engine: python}
     notes: Whole word match only. One reply for everything. No advice, no alternates, no interpretation. To swap an exercise for another reason use wording like "alternate this".
@@ -182,6 +188,7 @@ groups:
 
   # --------------------------------------------------------------- control
   - id: control
+    description: These are everyday commands the user can say at any time to manage the conversation with the app. They aren’t about exercises themselves.
     priority: 2
     defaults: {match_type: control, requires_state: any, engine: python}
     intents:
@@ -234,6 +241,7 @@ groups:
 
   # ------------------------------------------------------ pending answers
   - id: pending_answers
+    description: Handles replies to a question the app just asked, such as yes/no, 1 or 2, and "exercise or block". These only match while that question is open.
     priority: 2
     defaults: {match_type: pending, requires_state: any, engine: python}
     notes: Only match when the named question is open.
@@ -282,6 +290,7 @@ groups:
 
   # ----------------------------------------------- yes/no with no question
   - id: pending_fallbacks
+    description: Catches "yes" or "no" when no question is open and says there is nothing to confirm or cancel. It must come after pending_answers.
     priority: 2
     defaults: {match_type: control, requires_state: any, engine: python}
     notes: Must stay after pending_answers (group order enforces this).
@@ -293,6 +302,7 @@ groups:
 
   # ------------------------------------------------------------ small talk
   - id: small_talk
+    description: Greetings, thanks and praise. It gives short friendly replies.
     priority: 3
     defaults: {match_type: exact, requires_state: any, engine: python}
     intents:
@@ -302,6 +312,7 @@ groups:
 
   # ------------------------------------------------------ starting / home
   - id: home_commands
+    description: Home-page commands. Starting a workout (next, by name, or free ball), opening the builder, and asking what is next.
     priority: 3
     defaults: {match_type: exact, requires_state: none, engine: python, wrong_state_response: "@workout_running"}
     intents:
@@ -343,6 +354,7 @@ groups:
 
   # ---------------------------------------------------------------- lists
   - id: lists
+    description: Reads out your routines, workouts, or the exercises in a workout.
     priority: 3
     defaults: {requires_state: any, engine: python}
     intents:
@@ -364,6 +376,7 @@ groups:
 
   # ------------------------------------------------------------- printing
   - id: printing
+    description: Prints the current exercise or the whole workout, and asks which one if the user does not say.
     priority: 3
     defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout_print"}
     intents:
@@ -373,6 +386,7 @@ groups:
 
   # -------------------------------------------------------------- logging
   - id: logging_sets
+    description: Records a set during a workout. As planned, failed or missed, or the same as the last set.
     priority: 3
     defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
     intents:
@@ -391,6 +405,7 @@ groups:
 
   # -------------------------------------------------------------- skipping
   - id: skipping
+    description: Moves around a workout by skipping a set, exercise, block or rest, or ends the workout after asking for confirmation.
     priority: 3
     defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
     intents:
@@ -409,6 +424,7 @@ groups:
 
   # ---------------------------------------------------------------- timers
   - id: timers
+    description: Starts the duration timer (also "start exercise") or the stopwatch. It says so if the timer is already running, already finished, or the exercise has no timer.
     priority: 3
     defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
     intents:
@@ -426,6 +442,7 @@ groups:
 
   # ---------------------------------------------------------------- status
   - id: session_info
+    description: Answers questions about the current workout. Where you are, sets left, time left, and rest time left.
     priority: 3
     defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
     intents:
@@ -436,6 +453,7 @@ groups:
 
   # --------------------------------------------------------------- history
   - id: history
+    description: Answers questions from your past workouts. Last time you did an exercise, personal records, workout counts, streak, and weekly volume.
     priority: 3
     defaults: {requires_state: any, engine: python}
     notes: Answered from your history.
@@ -469,6 +487,7 @@ groups:
 
   # ------------------------------------------- python first, AI as backup
   - id: coaching_changes
+    description: Changes the workout on request. Explaining an exercise, swapping it, adjusting for missing equipment or limited time, and too easy or too hard. Python tries first and AI only steps in if needed. Changes ask for confirmation.
     priority: 3
     defaults: {requires_state: workout_active, engine: python_then_ai}
     intents:
@@ -514,6 +533,7 @@ groups:
 
   # ------------------------------------------------------ patterns / edits
   - id: patterns
+    description: Reads numbers from what the user says, such as "80 for 3" or "up 5". It logs sets, adds RPE, fixes the last set, and changes the next weight or reps without asking for confirmation.
     priority: 4
     defaults: {match_type: pattern, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
     intents:
@@ -560,6 +580,7 @@ groups:
 
   # ----------------------------------------------------------------- fuzzy
   - id: fuzzy_synonyms
+    description: Catches casual phrasing like "nailed it" or "call it a day". It only works when the match is close enough.
     priority: 5
     defaults: {match_type: fuzzy, requires_state: workout_active, engine: python}
     notes: Only used when the score passes the threshold set in code.
@@ -574,6 +595,7 @@ groups:
 
   # ------------------------------------------------------------ near match
   - id: near_match
+    description: When something is close but not certain, it offers two guesses and asks the user to say 1 or 2.
     priority: 6
     defaults: {requires_state: any, engine: python}
     intents:
@@ -586,6 +608,7 @@ groups:
 
   # -------------------------------------------------------------------- AI
   - id: ai
+    description: The last resort. If nothing else matches, the AI answers the question. If AI is unavailable, the user gets a simple "say help" message.
     priority: 7
     defaults: {requires_state: any, engine: ai}
     intents:
