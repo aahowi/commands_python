@@ -389,6 +389,23 @@ groups:
         response: "Rest skipped. Next up: {next_exercise}."
         notes: The rest timer starts on its own after each set, so there is no start command. Skip rest ends the timer and moves to the next exercise.
 
+  # ---------------------------------------------------------------- timers
+  - id: timers
+    priority: 3
+    defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
+    intents:
+      - id: start_duration_timer
+        phrases: [start the timer, start timer, start exercise]
+        response: Timer started.
+        outcomes:
+          already_running: Timer is already running.
+          already_finished: Timer already finished.
+          no_timer: This exercise has no timer.
+        notes: Starts the duration timer. The next exercise starts on its own when an exercise ends, but a timed exercise waits for this command. Only the started outcome changes state. The other outcomes just reply.
+      - id: start_stopwatch
+        phrases: [start the stopwatch, start stopwatch]
+        response: Stopwatch started.
+
   # ---------------------------------------------------------------- status
   - id: session_info
     priority: 3
