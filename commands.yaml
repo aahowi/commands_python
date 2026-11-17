@@ -1,0 +1,548 @@
+# Command bar spec. Edit this file; Claude Code reads it and updates the Python.
+#
+# HOW TO READ THIS FILE
+#   groups are evaluated top to bottom; intents inside a group top to bottom;
+#   phrases inside an intent top to bottom (first match wins). Order is explicit
+#   here, so no "must stay after" rules are needed.
+#   Each intent may have `variants`. A variant overrides any intent field
+#   (phrases, requires_state, response, ...). To branch an intent further,
+#   add another variant, or nest `variants` inside a variant.
+#   Fields not set on a variant fall back to the intent, then the group defaults.
+#   "@name" in a response field points to an entry in shared_responses.
+#   {braces} in a response are filled by Python from slots or session data.
+#   `engine`: python | python_then_ai | ai
+#   `fn`: Python function that handles the intent. Defaults to the intent id.
+
+version: 1
+
+states:
+  none: No workout is running (home page).
+  workout_active: A workout is running.
+  any: Either page.
+
+# A question the app asked that the next reply answers.
+pending_questions:
+  print_scope: Print the exercise or the whole workout?
+  skip_target: Skip this exercise or this block?
+  confirm_end: End this workout?
+  confirm_change: Apply a proposed change (weight, equipment swap, alternate, AI suggestion).
+  confirm_log_value: Save a value that failed the sanity check.
+  choose_option: Pick one of two did-you-mean candidates.
+  start_which: Which workout to start. Any reply becomes the name.
+
+# Text normalization, applied before matching, in this order:
+#   1. filler removed   2. phrase synonyms (contain a space)   3. word synonyms
+#   4. number words -> digits (21 and up are combined in code)
+# Format of each group: canonical: [synonyms]
+# A synonym with a space is phrase level; a single word is word level.
+# Word level is what makes "swap this" become "alternate this".
+normalization:
+  filler:   # "just log it" -> "log it"
+    - please
+    - can you
+    - could you
+    - would you
+    - will you
+    - um
+    - uh
+    - just
+    - i want to
+    - i'd like to
+    - i would like to
+
+  numbers:
+    "0": [zero]
+    "1": [one]     # makes "one more rep" -> "1 more reps"
+    "2": [two]
+    "3": [three]
+    "4": [four]
+    "5": [five]
+    "6": [six]
+    "7": [seven]
+    "8": [eight]
+    "9": [nine]
+    "10": [ten]
+    "11": [eleven]
+    "12": [twelve]
+    "13": [thirteen]
+    "14": [fourteen]
+    "15": [fifteen]
+    "16": [sixteen]
+    "17": [seventeen]
+    "18": [eighteen]
+    "19": [nineteen]
+    "20": [twenty]
+    "30": [thirty]
+    "40": [forty]
+    "50": [fifty]
+    "60": [sixty]
+    "70": [seventy]
+    "80": [eighty]
+    "90": [ninety]
+
+  # Applied only while the named question is pending.
+  pending_only:
+    choose_option:
+      "1": [first]
+      "2": [second]
+    any_question:      # otherwise dropped if the rest matches a command
+      "yes": [okay, ok]
+
+  synonyms:
+    punctuation:
+      what's: [whats, what is]   # commands use "what's"
+    unit_weight:
+      lbs: [pounds, pound, lb]
+    unit_reps:
+      reps: [rep, repetitions, repetition]   # also "one more rep" -> "1 more reps"
+    unit_time:
+      seconds: [sec, secs]
+      minutes: [min, mins, minute]           # "minutes" is already canonical
+    change:
+      change: [fix, edit, update, modify]
+    fewer:
+      fewer: [less]
+    up:
+      up: [add, plus, raise, increase, bump]
+    down:
+      down: [drop, lower, decrease, reduce, take off]   # "take off 5" -> "down 5"
+    alternate:
+      alternate: [swap, switch, replace]
+    help:
+      help: [commands, what can i say, what can you do, what can i do]
+    repeat:
+      repeat: [say that again, say again, pardon, what was that, what's that]
+    cancel:
+      cancel: [never mind, nevermind, forget it, scratch that]   # "scratch that" may become undo later
+    "yes":
+      "yes": [yeah, yep, yup, sure, confirm, correct, do it, go ahead]   # "correct" kept out of change group to avoid a clash
+    "no":
+      "no": [nope, nah, no thanks]
+    how_to:
+      how do i do: [how to do, how do you do]
+    greeting:
+      hi: [hello, hey, hiya, good morning, good evening]
+    thanks:
+      thanks: [thank you, thx, ty, thanks a lot]
+    praise:
+      nice: [great, awesome, good job, nice job, well done, good work]
+    log:
+      log it: [log this, log that, record it, record this, save it, save this]
+      done: [finished]
+    finish:
+      end workout: [finish workout, stop workout, end session, quit workout, finish up]
+    equipment:
+      dumbbells: [db, dumbbell]
+      barbell: [bb]
+      kettlebell: [kb]
+      bodyweight: [bw, body weight]
+
+shared_responses:
+  workout_running: A workout is already running. Say end workout first.
+  no_workout: No workout is running.
+  no_workout_start: No workout is running. Say start next workout to begin.
+  no_workout_print: No workout is running to print.
+  stop_medical: Stop this exercise now. Please get medical attention from a qualified professional before continuing.
+
+groups:
+  # ---------------------------------------------------------------- safety
+  - id: safety
+    priority: 1
+    defaults: {match_type: keyword, requires_state: any, engine: python}
+    notes: Whole word match only. Never offers alternates. To swap an exercise for another reason use wording like "alternate this".
+    intents:
+      - id: safety_pain
+        variants:
+          - phrases: [pain, hurt, hurts, injury, injured]
+            response: "@stop_medical"
+          - phrases: [dizzy, faint]
+            response: Stop now and sit down. Please get medical attention from a qualified professional before doing any more exercise.
+            notes: Dizziness.
+          - phrases: [numb]
+            response: Stop this exercise now. Please get medical attention from a qualified professional about the numbness or tingling.
+            notes: "Whole word, so 'numbers' does not trigger it."
+
+  # --------------------------------------------------------------- control
+  - id: control
+    priority: 2
+    defaults: {match_type: control, requires_state: any, engine: python}
+    intents:
+      - id: cancel_pending
+        phrases: [cancel]
+        response: Okay.
+        notes: Works in any state. Synonyms such as never mind are normalized to cancel.
+
+      - id: help
+        phrases: [help]
+        variants:
+          - id: show_help_home
+            requires_state: none
+            response: "You can say: start next workout, start workout [name], free ball, build new workout, what's next, list my workouts, list my routines, list exercises in [workout name], last time I did [exercise], PR for [exercise], how many workouts this week. You can also ask me questions."
+          - id: show_help_active
+            requires_state: workout_active
+            response: "During a workout you can say: log it, done, 135 for 8, up 5, down 5, skip rest, skip set, skip exercise, skip block, end workout, too easy, too hard, explain this exercise, alternate, no dumbbells, status, undo. You can also ask me questions."
+
+      - id: repeat_last_reply
+        phrases: [repeat]
+        response: "{last_reply}"
+
+      - id: undo_last_set
+        phrases: [undo]
+        requires_state: workout_active
+        response: Removed the last set.
+        wrong_state_response: No workout is running, so there is nothing to undo.
+        notes: Removes the last logged set.
+
+  # ------------------------------------------------------ pending answers
+  - id: pending_answers
+    priority: 2
+    defaults: {match_type: pending, requires_state: any, engine: python}
+    notes: Only match when the named question is open.
+    intents:
+      - id: answer_print_scope
+        expects: print_scope
+        variants:
+          - {phrases: [exercise], fn: print_exercise, response: Printing the current exercise.}
+          - {phrases: [workout], fn: print_workout, response: Printing the workout.}
+      - id: answer_skip_target
+        expects: skip_target
+        variants:
+          - {phrases: [exercise], fn: skip_exercise, response: Skipping this exercise.}
+          - {phrases: [block], fn: skip_block, response: Skipping this block.}
+      - id: answer_confirm_end
+        expects: confirm_end
+        variants:
+          - {phrases: ["yes"], fn: end_workout_confirmed, response: Workout ended.}
+          - {phrases: ["no"], fn: cancel_pending, response: "Okay, still going."}
+      - id: answer_confirm_change
+        expects: confirm_change
+        notes: Applies or rejects the change the app proposed (weight, equipment swap, alternate, AI suggestion).
+        variants:
+          - {phrases: ["yes"], fn: apply_pending_change, response: Done.}
+          - {phrases: ["no"], fn: cancel_pending, response: "Okay, no change made."}
+      - id: answer_confirm_log_value
+        expects: confirm_log_value
+        variants:
+          - {phrases: ["yes"], fn: confirm_logged_value, response: Saved., notes: Saves a value that failed the sanity check.}
+          - {phrases: ["no"], fn: cancel_pending, response: Not saved. Tell me the set again.}
+      - id: answer_choose_option
+        expects: choose_option
+        fn: run_pending_choice
+        response: "{chosen_response}"
+        variants:
+          - {phrases: ["1"], slots: {choice: 1}, notes: Runs the first did-you-mean candidate.}
+          - {phrases: ["2"], slots: {choice: 2}, notes: Runs the second did-you-mean candidate.}
+      - id: answer_start_which
+        expects: start_which
+        phrases: ["{workout_name}"]
+        fn: start_workout
+        slots:
+          - {name: workout_name, type: text, required: true}
+        response: Starting {workout_name}.
+        notes: Any reply is the workout name. Control words are checked first.
+
+  # ----------------------------------------------- yes/no with no question
+  - id: pending_fallbacks
+    priority: 2
+    defaults: {match_type: control, requires_state: any, engine: python}
+    notes: Must stay after pending_answers (group order enforces this).
+    intents:
+      - id: no_pending_confirm
+        variants:
+          - {phrases: ["yes"], response: Nothing to confirm right now.}
+          - {phrases: ["no"], response: Nothing to cancel right now.}
+
+  # ------------------------------------------------------------ small talk
+  - id: small_talk
+    priority: 3
+    defaults: {match_type: exact, requires_state: any, engine: python}
+    intents:
+      - {id: greet_user, phrases: [hi], response: Hi. Say help to see what I can do., notes: Synonyms such as hello are normalized to hi.}
+      - {id: thanks_user, phrases: [thanks], response: You're welcome.}
+      - {id: praise_user, phrases: [nice], response: Nice work. Keep it going., notes: During or after a workout.}
+
+  # ------------------------------------------------------ starting / home
+  - id: home_commands
+    priority: 3
+    defaults: {match_type: exact, requires_state: none, engine: python, wrong_state_response: "@workout_running"}
+    intents:
+      - id: start_next_workout
+        phrases: [start next workout]
+        response: Starting your next workout.
+      - id: start_workout_ask
+        phrases: [start workout]
+        opens: start_which
+        response: Which workout should I start?
+        notes: The next reply becomes the workout name.
+      - id: start_workout
+        match_type: template
+        phrases: ["start workout {workout_name}"]
+        slots:
+          - {name: workout_name, type: text, required: true}
+        response: Starting {workout_name}.
+        notes: Name is matched against your workouts.
+      - id: start_free_ball
+        phrases: [free ball]
+        response: Starting Free Ball.
+      - id: build_new_workout
+        requires_state: any
+        wrong_state_response: null
+        phrases: [build new workout]
+        response: Opening the workout builder.
+      - id: whats_next
+        phrases: [what's next]
+        variants:
+          - id: whats_next_workout
+            requires_state: none
+            phrases: [what's next, what's next workout]
+            response: Your next workout is {next_workout}.
+          - id: whats_next_exercise
+            requires_state: workout_active
+            phrases: [what's next]
+            wrong_state_response: null
+            response: "Next up: {next_exercise}."
+
+  # ---------------------------------------------------------------- lists
+  - id: lists
+    priority: 3
+    defaults: {requires_state: any, engine: python}
+    intents:
+      - {id: list_routines, match_type: exact, phrases: [list my routines], response: Here are your routines.}
+      - {id: list_workouts, match_type: exact, phrases: [list my workouts], response: Here are your workouts.}
+      - id: list_exercises_in_workout
+        match_type: template
+        phrases: ["list exercises in {workout_name}"]
+        slots:
+          - {name: workout_name, type: text, required: true}
+        response: "Exercises in {workout_name}: {exercise_list}."
+        notes: Name matched the same way as start workout.
+      - id: list_current_exercises
+        match_type: exact
+        requires_state: workout_active
+        phrases: [list exercises]
+        response: "Exercises in this workout: {exercise_list}."
+        wrong_state_response: "@no_workout"
+
+  # ------------------------------------------------------------- printing
+  - id: printing
+    priority: 3
+    defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout_print"}
+    intents:
+      - {id: clarify_print_scope, phrases: [print], opens: print_scope, response: "Print the exercise or the whole workout?"}
+      - {id: print_exercise, phrases: [print exercise], response: Printing the current exercise.}
+      - {id: print_workout, phrases: [print workout], response: Printing the workout.}
+
+  # -------------------------------------------------------------- logging
+  - id: logging_sets
+    priority: 3
+    defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
+    intents:
+      - id: log_current_set
+        phrases: [log it, done, done on target, as planned]
+        response: "Logged {exercise}: {planned}."
+        wrong_state_response: "@no_workout_start"
+      - id: log_failed_set
+        notes: Use change last set to correct it.
+        variants:
+          - {phrases: [failed], response: Logged this set as failed.}
+          - {phrases: [missed], response: Logged this set as missed.}
+      - id: log_same_as_last
+        phrases: [same again, same as last set]
+        response: "Logged the same as the last set: {weight} x {reps}."
+
+  # -------------------------------------------------------------- skipping
+  - id: skipping
+    priority: 3
+    defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
+    intents:
+      - {id: clarify_skip_target, phrases: [skip, next], opens: skip_target, response: "Skip this exercise or this block?"}
+      - {id: skip_exercise, phrases: [skip exercise, next exercise], response: Skipping to the next exercise.}
+      - {id: skip_block, phrases: [skip block, next block], response: Skipping to the next block.}
+      - {id: skip_set, phrases: [skip set], response: Skipped this set., notes: Skips only the current set.}
+      - id: clarify_end_workout
+        phrases: [end, end workout]
+        opens: confirm_end
+        response: End this workout? Say yes to confirm.
+      - id: skip_rest
+        phrases: [skip rest]
+        response: "Rest skipped. Next up: {next_exercise}."
+        notes: The rest timer starts on its own after each set, so there is no start command. Skip rest ends the timer and moves to the next exercise.
+
+  # ---------------------------------------------------------------- status
+  - id: session_info
+    priority: 3
+    defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
+    intents:
+      - {id: rest_time_left, phrases: [how long left on rest], response: "{rest_remaining} seconds of rest left."}
+      - {id: session_status, phrases: [status, where am i], response: "{exercise}, set {set_number} of {total_sets}. {sets_left} sets left."}
+      - {id: sets_left, phrases: [how many sets left], response: "{sets_left} sets left in this workout."}
+      - {id: time_left, phrases: [how long is this workout, how much time is left], response: "About {minutes_left} minutes left."}
+
+  # --------------------------------------------------------------- history
+  - id: history
+    priority: 3
+    defaults: {requires_state: any, engine: python}
+    notes: Answered from your history.
+    intents:
+      - id: last_time_exercise
+        match_type: template
+        phrases: ["last time i did {exercise}", "what was my last {exercise}"]
+        slots: &exercise_slot
+          - {name: exercise, type: exercise, required: true}
+        response: "Last time you did {exercise}: {last_sets}."
+        notes: Exercise name matched against your library.
+      - id: personal_record
+        match_type: template
+        phrases: ["pr for {exercise}", "personal record for {exercise}", "best {exercise}"]
+        slots: *exercise_slot
+        response: "Your best {exercise}: {best_set}."
+      - id: workout_counts
+        match_type: exact
+        variants:
+          - {fn: workouts_this_week, phrases: [how many workouts this week], response: "You have done {count} workouts this week."}
+          - {fn: workouts_last_week, phrases: [how many workouts last week], response: "You did {count} workouts last week."}
+          - {fn: workouts_this_month, phrases: [how many workouts this month], response: "You have done {count} workouts this month."}
+      - {id: streak, match_type: exact, phrases: [what's my streak], response: "Your current streak is {streak} days."}
+      - id: workout_on_day
+        match_type: template
+        phrases: ["what did i do last {day}", "what did i do on {day}"]
+        slots:
+          - {name: day, type: day, required: true}
+        response: "Last {day} you did {workout_name}."
+      - {id: volume_this_week, match_type: exact, phrases: [how much did i lift this week], response: "Total volume this week: {volume} {unit}."}
+
+  # ------------------------------------------- python first, AI as backup
+  - id: coaching_changes
+    priority: 3
+    defaults: {requires_state: workout_active, engine: python_then_ai}
+    intents:
+      - id: explain_exercise
+        variants:
+          - match_type: exact
+            phrases: [explain this exercise]
+          - match_type: template
+            phrases: ["explain {exercise}", "how do i do {exercise}"]
+            slots: *exercise_slot
+            notes: "'this' resolves to the current exercise."
+        response: "{stored_explanation}"
+        notes: Uses a stored explanation if one exists. Otherwise AI explains.
+      - id: alternate_exercise
+        match_type: exact
+        phrases: [alternate, alternate this, alternate exercise]
+        opens: confirm_change
+        response: Swap in {alternate}?
+        notes: Stored alternates first. Otherwise AI suggests one.
+      - id: equipment_swap
+        match_type: template
+        phrases: ["no {equipment}", "no {equipment} today", "no {equipment} available today"]
+        slots:
+          - {name: equipment, type: equipment, required: true}
+        opens: confirm_change
+        response: Swap out anything that needs {equipment}?
+        notes: Python filters the exercise library by equipment first. AI only if nothing matches.
+      - id: time_limit_adjust
+        match_type: template
+        phrases: ["i only have {minutes} minutes", "only {minutes} minutes"]
+        slots:
+          - {name: minutes, type: number, required: true}
+        opens: confirm_change
+        response: Shorten the workout to about {minutes} minutes?
+        notes: Python drops accessory work first. AI only if that is not enough.
+      - id: feedback
+        match_type: exact
+        opens: confirm_change
+        notes: Python rule first. AI only if no rule applies.
+        variants:
+          - {fn: feedback_too_easy, phrases: [too easy, too light], response: "Raise the next set by {increase} {unit}?"}
+          - {fn: feedback_too_hard, phrases: [too hard, too heavy], response: "Lower the next set by {decrease} {unit}?"}
+
+  # ------------------------------------------------------ patterns / edits
+  - id: patterns
+    priority: 4
+    defaults: {match_type: pattern, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
+    intents:
+      - id: log_metrics
+        notes: Weights outside the sanity range open confirm_log_value. Phrase order matters (RPE pattern before the shorter "for").
+        phrases:
+          - text: "{weight}@{reps}"
+            notes: Parses 8@135.
+          - text: "{weight} lbs {reps} reps"
+            notes: Parses 120 lbs 6 reps.
+          - text: "{weight} for {reps} and rpe {rpe}"
+            rpe_required: true
+            notes: Parses 80 for 3 and RPE 6.
+          - text: "{weight} for {reps}"
+          - text: "{weight} x {reps}"
+          - text: "{reps} reps at {weight}"
+        slots:
+          - {name: weight, type: number, required: true}
+          - {name: reps, type: number, required: true}
+          - {name: rpe, type: number, required: false}
+        response: Logged {weight} x {reps}.
+        wrong_state_response: null
+        variants:
+          - {when_rpe_required: true, response: "Logged {weight} x {reps} at RPE {rpe}."}
+      - id: set_rpe
+        phrases: ["rpe {rpe}"]
+        slots: [{name: rpe, type: number, required: true}]
+        response: RPE {rpe} saved for the last set.
+        notes: Adds RPE to the last logged set.
+      - id: correct_last_set
+        notes: Synonyms such as fix and edit are normalized to change.
+        variants:
+          - {fn: correct_last_set, phrases: ["change last set to {weight} for {reps}"], slots: [{name: weight, type: number, required: true}, {name: reps, type: number, required: true}], response: "Changed the last set to {weight} x {reps}."}
+          - {fn: correct_last_reps, phrases: ["change last set reps to {reps}"], slots: [{name: reps, type: number, required: true}], response: "Last set reps changed to {reps}."}
+          - {fn: correct_last_weight, phrases: ["change last set weight to {weight}"], slots: [{name: weight, type: number, required: true}], response: "Last set weight changed to {weight}."}
+      - id: adjust_next_set
+        slots: [{name: amount, type: number, required: true}]
+        notes: Direct changes the user asked for, so no confirmation.
+        variants:
+          - {fn: adjust_next_weight_up, phrases: ["up {amount}"], response: "Next set: {new_weight} {unit}."}
+          - {fn: adjust_next_weight_down, phrases: ["down {amount}"], response: "Next set: {new_weight} {unit}."}
+          - {fn: adjust_next_reps_up, phrases: ["{amount} more reps"], response: "Next set: {new_reps} reps."}
+          - {fn: adjust_next_reps_down, phrases: ["{amount} fewer reps"], response: "Next set: {new_reps} reps."}
+
+  # ----------------------------------------------------------------- fuzzy
+  - id: fuzzy_synonyms
+    priority: 5
+    defaults: {match_type: fuzzy, requires_state: workout_active, engine: python}
+    notes: Only used when the score passes the threshold set in code.
+    intents:
+      - id: log_current_set
+        phrases: [book it, nailed it, smashed it]
+        response: "Logged {exercise}: {planned}."
+      - id: clarify_end_workout
+        phrases: [wrap it up, call it a day]
+        opens: confirm_end
+        response: End this workout? Say yes to confirm.
+
+  # ------------------------------------------------------------ near match
+  - id: near_match
+    priority: 6
+    defaults: {requires_state: any, engine: python}
+    intents:
+      - id: offer_closest_matches
+        match_type: near_match
+        phrases: ["*"]
+        opens: choose_option
+        response: Did you mean {choice_1} or {choice_2}? Say 1 or 2.
+        notes: Runs when a fuzzy or name match is close but not certain. Stores the top two candidates.
+
+  # -------------------------------------------------------------------- AI
+  - id: ai
+    priority: 7
+    defaults: {requires_state: any, engine: ai}
+    intents:
+      - id: ai_examples
+        match_type: ai_example
+        notes: Examples for the AI prompt. Not matched directly.
+        variants:
+          - {fn: ai_answer_question, phrases: [what muscle group does this work]}
+          - {fn: ai_safety_question, phrases: [is this exercise safe with a bad knee]}
+          - {fn: ai_coaching_question, phrases: [how many sets should i do]}
+          - {fn: ai_equipment_alternative, phrases: [what can i use instead of a barbell]}
+      - id: ai_fallback
+        match_type: ai_fallback
+        phrases: ["*"]
+        response: I can't reach AI right now. Say help to see what I can do.
+        notes: Catch-all. AI gets the text plus session JSON in one pass. Any proposed change opens confirm_change. The response is only shown when AI is unavailable.
