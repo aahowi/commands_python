@@ -28,7 +28,12 @@ pending_questions:
   confirm_change: Apply a proposed change (weight, equipment swap, alternate, AI suggestion).
   confirm_log_value: Save a value that failed the sanity check.
   choose_option: Pick one of two did-you-mean candidates.
-  start_which: Which workout to start. Any reply becomes the name.
+  choose_workout:
+    description: Pick a workout from a short numbered list, by number or by name.
+    page_size: 3
+    order: [next_scheduled, most_recent, rest]   # Python rule: next scheduled workout, then most recently done, then the rest
+    accepts: [number, name]
+    extra_commands: [more, back]
 
 # Text normalization, applied before matching, in this order:
 #   0. digit cleanup   1. filler removed   2. phrase synonyms (contain a space)
@@ -90,6 +95,10 @@ normalization:
     choose_option:
       "1": [first]
       "2": [second]
+    choose_workout:
+      "1": [first]
+      "2": [second]
+      "3": [third]
     any_question:      # otherwise dropped if the rest matches a command
       "yes": [okay, ok]
 
@@ -279,14 +288,34 @@ groups:
         variants:
           - {phrases: ["1"], slots: {choice: 1}, notes: Runs the first did-you-mean candidate.}
           - {phrases: ["2"], slots: {choice: 2}, notes: Runs the second did-you-mean candidate.}
-      - id: answer_start_which
-        expects: start_which
-        phrases: ["{workout_name}"]
-        fn: start_workout
-        slots:
-          - {name: workout_name, type: text, required: true}
-        response: Starting {workout_name}.
-        notes: Any reply is the workout name. Control words are checked first.
+      - id: answer_choose_workout
+        expects: choose_workout
+        notes: Numbers are global across pages, so page two shows 4, 5, 6 and a user can say "5" without paging. A number outside the list repeats the question. A name goes through name matching, and a close but uncertain name goes to near_match.
+        variants:
+          - id: pick_workout_by_number
+            phrases: ["{choice}"]
+            slots:
+              - {name: choice, type: number, required: true}
+            fn: start_workout_by_number
+            response: Starting {workout_name}.
+            wrong_answer_response: "Say a number from the list, or say cancel."
+          - id: pick_workout_by_name
+            phrases: ["{workout_name}"]
+            slots:
+              - {name: workout_name, type: text, required: true}
+            fn: start_workout
+            response: Starting {workout_name}.
+            notes: Checked after the number variant and the control words, including more and back.
+          - id: workout_list_more
+            phrases: [more]
+            fn: workout_list_next_page
+            response: "{numbered_workout_page} Say a number, more, or back."
+            wrong_answer_response: That is the end of the list. Say a number or back.
+          - id: workout_list_back
+            phrases: [back]
+            fn: workout_list_prev_page
+            response: "{numbered_workout_page} Say a number, more, or back."
+            wrong_answer_response: That is the start of the list. Say a number or more.
 
   # ----------------------------------------------- yes/no with no question
   - id: pending_fallbacks
@@ -321,9 +350,9 @@ groups:
         response: Starting your next workout.
       - id: start_workout_ask
         phrases: [start workout]
-        opens: start_which
-        response: Which workout should I start?
-        notes: The next reply becomes the workout name.
+        opens: choose_workout
+        response: "Which workout? {numbered_workout_page} Say a number, a name, or more."
+        notes: Python builds the page from your saved workouts using the choose_workout settings, for example "1. Push Day, 2. Pull Day, 3. Legs". The full list is stored so numbers map to the right workout on every page.
       - id: start_workout
         match_type: template
         phrases: ["start workout {workout_name}"]
