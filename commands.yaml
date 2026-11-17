@@ -142,25 +142,43 @@ shared_responses:
   no_workout: No workout is running.
   no_workout_start: No workout is running. Say start next workout to begin.
   no_workout_print: No workout is running to print.
-  stop_medical: Stop this exercise now. Please get medical attention from a qualified professional before continuing.
+  stop_medical: Stop now. Please get help from a qualified professional.
 
 groups:
   # ---------------------------------------------------------------- safety
   - id: safety
     priority: 1
     defaults: {match_type: keyword, requires_state: any, engine: python}
-    notes: Whole word match only. Never offers alternates. To swap an exercise for another reason use wording like "alternate this".
+    notes: Whole word match only. One reply for everything. No advice, no alternates, no interpretation. To swap an exercise for another reason use wording like "alternate this".
     intents:
-      - id: safety_pain
-        variants:
-          - phrases: [pain, hurt, hurts, injury, injured]
-            response: "@stop_medical"
-          - phrases: [dizzy, faint]
-            response: Stop now and sit down. Please get medical attention from a qualified professional before doing any more exercise.
-            notes: Dizziness.
-          - phrases: [numb]
-            response: Stop this exercise now. Please get medical attention from a qualified professional about the numbness or tingling.
-            notes: "Whole word, so 'numbers' does not trigger it."
+      - id: safety_stop
+        response: "@stop_medical"
+        phrases:
+          - pain
+          - hurt
+          - hurts
+          - dizzy
+          - faint
+          - numb
+          - injury
+          - injured
+          - fainted
+          - passed out
+          - blacked out
+          - lightheaded
+          - dizziness
+          - tingling
+          - nauseous
+          - nausea
+          - short of breath
+          - can't breathe
+          - chest tightness
+          - chest pressure
+          - blurry vision
+          - sprained
+          - strained
+          - pulled
+          - torn
 
   # --------------------------------------------------------------- control
   - id: control
