@@ -173,12 +173,33 @@ groups:
         notes: Works in any state. Synonyms such as never mind are normalized to cancel.
 
       - id: help
-        phrases: [help]
+        notes: Variants are checked top to bottom, so the specific "help me with ..." phrases come before plain help.
         variants:
+          - id: help_about_app
+            match_type: template
+            phrases:
+              - help me with this app
+              - help me with this website
+              - help me with this site
+              - how do i use this app
+            response: "This app lets you run workouts by voice or typing. Say help for the list of commands."
+          - id: help_about_exercise
+            match_type: template
+            engine: python_then_ai
+            fn: explain_exercise
+            phrases:
+              - "help me understand how to do {exercise}"
+              - "help me with {exercise}"
+            slots:
+              - {name: exercise, type: exercise, required: true}
+            response: "{stored_explanation}"
+            notes: Reuses the explain_exercise flow. Falls through to plain help if the name is not an exercise.
           - id: show_help_home
+            phrases: [help]
             requires_state: none
             response: "You can say: start next workout, start workout [name], free ball, build new workout, what's next, list my workouts, list my routines, list exercises in [workout name], last time I did [exercise], PR for [exercise], how many workouts this week. You can also ask me questions."
           - id: show_help_active
+            phrases: [help]
             requires_state: workout_active
             response: "During a workout you can say: log it, done, 135 for 8, up 5, down 5, skip rest, skip set, skip exercise, skip block, end workout, too easy, too hard, explain this exercise, alternate, no dumbbells, status, undo. You can also ask me questions."
 
