@@ -514,13 +514,26 @@ groups:
       - id: explain_exercise
         variants:
           - match_type: exact
-            phrases: [explain this exercise]
+            engine: python
+            phrases:
+              - explain this exercise
+              - explain this
+              - describe this exercise
+              - describe this
+              - how do i do this exercise
+              - how do i do this
+              - how do i perform this exercise
+              - how to perform this exercise
+              - tell me about this exercise
+              - what's this exercise
+            wrong_state_response: "@no_workout"
+            notes: Resolve the current exercise from the active session and return its stored description as stored_explanation. If there is no current exercise or description, say so; do not generate an explanation.
           - match_type: template
             phrases: ["explain {exercise}", "how do i do {exercise}"]
             slots: *exercise_slot
             notes: "'this' resolves to the current exercise."
         response: "{stored_explanation}"
-        notes: Uses a stored explanation if one exists. Otherwise AI explains.
+        notes: Named exercises use a stored explanation if one exists; otherwise AI explains.
       - id: alternate_exercise
         match_type: exact
         phrases: [alternate, alternate this, alternate exercise]
