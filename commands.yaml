@@ -36,17 +36,15 @@ pending_questions:
     extra_commands: [more, back]
 
 # Text normalization, applied before matching, in this order:
-#   0. digit cleanup   1. filler removed   2. phrase synonyms (contain a space)
+#   1. filler removed   2. phrase synonyms (contain a space)
 #   3. word synonyms   4. number words -> digits (21 and up are combined in code)
 # Format of each synonym group: canonical: [synonyms]
 # A synonym with a space is phrase level; a single word is word level.
 # Word level is what makes "swap this" become "alternate this".
+# Keep colon-formatted values intact until the intent and slot are known:
+# interpret M:SS as a duration in a duration slot, but concatenate digits in a
+# workout weight slot (so "1:30" means 130). Ask if the context is ambiguous.
 normalization:
-  digit_cleanup:
-    - description: No clock times or spoken times in commands, so a phone's "1:30" means the number 130. The timer reads its own time outside the command bar.
-      pattern: '\b(\d+):(\d{2})\b'
-      replace: '\1\2'
-
   filler:   # "just log it" -> "log it"
     - please
     - can you
@@ -567,7 +565,7 @@ groups:
     defaults: {match_type: pattern, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
     intents:
       - id: log_metrics
-        notes: Weights outside the sanity range open confirm_log_value. Phrase order matters (RPE pattern before the shorter "for").
+        notes: Weights outside the sanity range open confirm_log_value. Phrase order matters (RPE pattern before the shorter "for"). In a workout weight slot, concatenate colon-formatted digits (1:30 means 130); keep the colon intact for other contexts.
         phrases:
           - text: "{weight}@{reps}"
             notes: Parses 8@135.
@@ -576,6 +574,9 @@ groups:
           - text: "{weight} for {reps} and rpe {rpe}"
             rpe_required: true
             notes: Parses 80 for 3 and RPE 6.
+          - text: "{reps} at {weight} rpe {rpe}"
+            rpe_required: true
+            notes: Parses "Done, 12 at 130, RPE 6"; a colon-formatted weight such as 1:30 means 130.
           - text: "{weight} for {reps}"
           - text: "{weight} x {reps}"
           - text: "{reps} reps at {weight}"
