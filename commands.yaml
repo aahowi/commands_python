@@ -124,8 +124,6 @@ normalization:
       help: [commands, what can i say, what can you do, what can i do]
     repeat:
       repeat: [say that again, say again, pardon, what was that, what's that]
-    cancel:
-      cancel: [never mind, nevermind, forget it, scratch that]   # "scratch that" may become undo later
     "yes":
       "yes": [yeah, yep, yup, sure, confirm, correct, do it, go ahead]   # "correct" kept out of change group to avoid a clash
     "no":
@@ -413,7 +411,7 @@ groups:
 
   # -------------------------------------------------------------- logging
   - id: logging_sets
-    description: Records a set during a workout. As planned, failed or missed, or the same as the last set.
+    description: Records a set during a workout as planned or the same as the last set.
     priority: 3
     defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
     intents:
@@ -421,11 +419,6 @@ groups:
         phrases: [log it, done, done on target, as planned]
         response: "Logged {exercise}: {planned}."
         wrong_state_response: "@no_workout_start"
-      - id: log_failed_set
-        notes: Use change last set to correct it.
-        variants:
-          - {phrases: [failed], response: Logged this set as failed.}
-          - {phrases: [missed], response: Logged this set as missed.}
       - id: log_same_as_last
         phrases: [same again, same as last set]
         response: "Logged the same as the last set: {weight} x {reps}."
