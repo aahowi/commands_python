@@ -495,9 +495,9 @@ groups:
       - id: workout_counts
         match_type: exact
         variants:
-          - {fn: workouts_this_week, phrases: [how many workouts this week], response: "You have done {count} workouts this week."}
-          - {fn: workouts_last_week, phrases: [how many workouts last week], response: "You did {count} workouts last week."}
-          - {fn: workouts_this_month, phrases: [how many workouts this month], response: "You have done {count} workouts this month."}
+          - {fn: workouts_this_week, phrases: [how many workouts this week, how many times did i work out this week, workouts this week], response: "You have done {count} workouts this week."}
+          - {fn: workouts_last_week, phrases: [how many workouts last week, how many times did i work out last week, workouts last week], response: "You did {count} workouts last week."}
+          - {fn: workouts_this_month, phrases: [how many workouts this month, how many times did i work out this month, workouts this month], response: "You have done {count} workouts this month."}
       - {id: streak, match_type: exact, phrases: [what's my streak], response: "Your current streak is {streak} days."}
       - id: workout_on_day
         match_type: template
@@ -505,8 +505,8 @@ groups:
         slots:
           - {name: day, type: day, required: true}
         response: "Last {day} you did {workout_name}."
-      - {id: volume_this_week, match_type: exact, phrases: [how much did i lift this week], response: "Total volume this week: {volume} {unit}."}
-      - {id: volume_last_week, match_type: exact, phrases: [how much did i lift last week], response: "Total volume last week: {volume} {unit}."}
+      - {id: volume_this_week, match_type: exact, phrases: [how much did i lift this week, how much weight did i lift this week, what's my volume this week, total volume this week], response: "Total volume this week: {volume} {unit}."}
+      - {id: volume_last_week, match_type: exact, phrases: [how much did i lift last week, how much weight did i lift last week, what's my volume last week, total volume last week], response: "Total volume last week: {volume} {unit}."}
 
   # ------------------------------------------- python first, AI as backup
   - id: coaching_changes
