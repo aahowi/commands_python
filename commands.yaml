@@ -450,12 +450,14 @@ groups:
     intents:
       - id: start_duration_timer
         phrases: [start the timer, start timer, start exercise]
-        response: Timer started.
+        response: "Timer started for {duration} seconds."
         outcomes:
           already_running: Timer is already running.
           already_finished: Timer already finished.
           no_timer: This exercise has no timer.
-        notes: Starts the duration timer. The next exercise starts on its own when an exercise ends, but a timed exercise waits for this command. Only the started outcome changes state. The other outcomes just reply.
+        notes: Starts the duration timer. The next exercise starts on its own when an exercise ends, but a timed exercise waits for this command. Only the started outcome changes state. The other outcomes just reply. When the duration has passed since the user started the timer (e.g. 15 seconds), the app announces completion in the command prompt using the completed response.
+        on_complete:
+          response: "Time's up. {duration} seconds have passed."
       - id: start_stopwatch
         phrases: [start the stopwatch, start stopwatch]
         response: Stopwatch started.
