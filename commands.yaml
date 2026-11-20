@@ -154,11 +154,27 @@ shared_responses:
   no_workout_print: No workout is running to print.
   stop_medical: Stop now. Please get help from a qualified professional.
 
+# Every reply ends with a question that tells the user what they can do next.
+# Python builds it as: reply + " " + template filled from the first two options.
+# Option lookup, first hit wins: intent `next_options`, group `next_options`,
+# then state_defaults for the state AFTER the command ran (so "Workout ended."
+# uses the `none` options). Options are phrases the user can say as written.
+# Set `follow_up: false` on a group or intent to leave the question off.
+# Never added to: a reply that opens a pending question (it already asks one),
+# safety replies, help, repeat, wrong_answer_response, or any reply with
+# `follow_up: false`. wrong_state_response replies do get it.
+follow_up:
+  template: "What would you like to do next: {option_a} or {option_b}?"
+  state_defaults:
+    none: [start next workout, list my workouts]
+    workout_active: [log it, skip exercise]
+
 groups:
   # ---------------------------------------------------------------- safety
   - id: safety
     description: Controls liability. If someone mentions pain, dizziness, injury or similar, it stops everything and tells them to get help from a qualified professional. It gives no advice and always wins over every other command.
     priority: 1
+    follow_up: false
     defaults: {match_type: keyword, requires_state: any, engine: python}
     notes: Whole word match only. One reply for everything. No advice, no alternates, no interpretation. To swap an exercise for another reason use wording like "alternate this".
     intents:
@@ -225,15 +241,18 @@ groups:
             response: "{stored_explanation}"
             notes: Reuses the explain_exercise flow. Falls through to plain help if the name is not an exercise.
           - id: show_help_home
+            follow_up: false
             phrases: [help]
             requires_state: none
             response: "You can say: start next workout, start workout [name], free ball, build new workout, what's next, list my workouts, list my routines, list exercises in [workout name], last time I did [exercise], PR for [exercise], how many workouts this week. You can also ask me questions."
           - id: show_help_active
+            follow_up: false
             phrases: [help]
             requires_state: workout_active
             response: "During a workout you can say: log it, done, 135 for 8, up 5, down 5, skip rest, skip set, skip exercise, skip block, end workout, too easy, too hard, explain this exercise, alternate, no dumbbells, status, undo. You can also ask me questions."
 
       - id: repeat_last_reply
+        follow_up: false
         phrases: [repeat]
         response: "{last_reply}"
 
@@ -280,6 +299,7 @@ groups:
       - id: answer_choose_option
         expects: choose_option
         fn: run_pending_choice
+        follow_up: false   # the chosen command adds its own
         response: "{chosen_response}"
         variants:
           - {phrases: ["1"], slots: {choice: 1}, notes: Runs the first did-you-mean candidate.}
@@ -305,11 +325,13 @@ groups:
           - id: workout_list_more
             phrases: [more]
             fn: workout_list_next_page
+            follow_up: false
             response: "{numbered_workout_page} Say a number, more, or back."
             wrong_answer_response: That is the end of the list. Say a number or back.
           - id: workout_list_back
             phrases: [back]
             fn: workout_list_prev_page
+            follow_up: false
             response: "{numbered_workout_page} Say a number, more, or back."
             wrong_answer_response: That is the start of the list. Say a number or more.
 
@@ -450,17 +472,21 @@ groups:
     intents:
       - id: start_duration_timer
         phrases: [start the timer, start timer, start exercise]
-        response: "Timer started for {duration} seconds."
+        response: "Timer started. I'll notify you when the timer is complete."
+        follow_up: false
         outcomes:
           already_running: Timer is already running.
           already_finished: Timer already finished.
           no_timer: This exercise has no timer.
         notes: Starts the duration timer. The next exercise starts on its own when an exercise ends, but a timed exercise waits for this command. Only the started outcome changes state. The other outcomes just reply. When the duration has passed since the user started the timer (e.g. 15 seconds), the app announces completion in the command prompt using the completed response.
         on_complete:
-          response: "Time's up. {duration} seconds have passed."
+          response: "Timer completed. Next up is {next_exercise}. {reps} reps at {weight} {unit}."
+          next_options: [start exercise, skip exercise]
+          notes: Announced by Python when the timer ends, not in reply to a command, so it carries its own options.
       - id: start_stopwatch
         phrases: [start the stopwatch, start stopwatch]
         response: Stopwatch started.
+        follow_up: false
 
   # ---------------------------------------------------------------- status
   - id: session_info
@@ -660,6 +686,7 @@ groups:
           - {fn: ai_coaching_question, phrases: [how many sets should i do]}
           - {fn: ai_equipment_alternative, phrases: [what can i use instead of a barbell]}
       - id: ai_fallback
+        follow_up: false
         match_type: ai_fallback
         phrases: ["*"]
         response: I can't reach AI right now. Say help to see what I can do.
