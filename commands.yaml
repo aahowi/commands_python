@@ -506,6 +506,7 @@ groups:
           - {name: day, type: day, required: true}
         response: "Last {day} you did {workout_name}."
       - {id: volume_this_week, match_type: exact, phrases: [how much did i lift this week], response: "Total volume this week: {volume} {unit}."}
+      - {id: volume_last_week, match_type: exact, phrases: [how much did i lift last week], response: "Total volume last week: {volume} {unit}."}
 
   # ------------------------------------------- python first, AI as backup
   - id: coaching_changes
