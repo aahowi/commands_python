@@ -254,7 +254,7 @@ groups:
               - help me understand how to do this
               - help me with this movement
             response: "{stored_explanation}"
-            notes: Only valid inside an active session. No exercise name is spoken; the exercise is the current one from the active session. Returns its stored description as stored_explanation. If there is no current exercise or description, say so; do not generate an explanation. At home this does not match and falls through to the wildcard help below. Not the same as help_about_exercise, which is named and works in any state.
+            notes: Only valid inside an active session. No exercise name is spoken; the exercise is the current one from the active session. Handled by explain_exercise (defined below in control). At home this does not match and falls through to the wildcard help below. Not the same as help_about_exercise, which is named and works in any state.
           - id: help_about_exercise
             match_type: template
             requires_state: any
@@ -271,7 +271,7 @@ groups:
             slots:
               - {name: exercise, type: exercise, required: true}
             response: "{stored_explanation}"
-            notes: The user names the exercise, so it works in any state. Reuses the explain_exercise flow. Falls through to plain help if the name is not an exercise.
+            notes: The user names the exercise, so it works in any state. Handled by explain_exercise (defined below in control). Falls through to plain help if the name is not an exercise.
           - id: show_help_home
             follow_up: false
             match_type: contains_word   # wildcard - any input containing the word "help" that no variant above matched
@@ -284,6 +284,35 @@ groups:
             phrases: [help]
             requires_state: workout_active
             response: "During a workout you can say: log it, done, 135 for 8, up 5, down 5, skip rest, skip set, skip exercise, skip block, end workout, too easy, too hard, explain this exercise, alternate, no dumbbells, status, undo. You can also ask me questions."
+
+      - id: explain_exercise
+        description: Explains an exercise. "this" means the current exercise in the active session; a named exercise works in any state. help_about_this_exercise and help_about_exercise route here too.
+        response: "{stored_explanation}"
+        notes: Named exercises use a stored explanation if one exists; otherwise AI explains. Information only, it changes nothing.
+        variants:
+          - match_type: exact
+            requires_state: workout_active
+            engine: python
+            phrases:
+              - explain this exercise
+              - explain this
+              - describe this exercise
+              - describe this
+              - how do i do this exercise
+              - how do i do this
+              - how do i perform this exercise
+              - how to perform this exercise
+              - tell me about this exercise
+              - what's this exercise
+            wrong_state_response: "@no_workout"
+            notes: Resolve the current exercise from the active session and return its stored description as stored_explanation. If there is no current exercise or description, say so; do not generate an explanation.
+          - match_type: template
+            requires_state: any
+            engine: python_then_ai
+            phrases: ["explain {exercise}", "how do i do {exercise}"]
+            slots:
+              - {name: exercise, type: exercise, required: true}
+            notes: Named exercise, so it works at home or in a workout.
 
       - id: repeat_last_reply
         follow_up: false
@@ -570,33 +599,10 @@ groups:
 
   # ------------------------------------------- python first, AI as backup
   - id: coaching_changes
-    description: Changes the workout on request. Explaining an exercise, swapping it, adjusting for missing equipment or limited time, and too easy or too hard. Python tries first and AI only steps in if needed. Changes ask for confirmation.
+    description: Changes the workout on request. Swapping an exercise, adjusting for missing equipment or limited time, and too easy or too hard. Python tries first and AI only steps in if needed. Changes ask for confirmation.
     priority: 3
     defaults: {requires_state: workout_active, engine: python_then_ai}
     intents:
-      - id: explain_exercise
-        variants:
-          - match_type: exact
-            engine: python
-            phrases:
-              - explain this exercise
-              - explain this
-              - describe this exercise
-              - describe this
-              - how do i do this exercise
-              - how do i do this
-              - how do i perform this exercise
-              - how to perform this exercise
-              - tell me about this exercise
-              - what's this exercise
-            wrong_state_response: "@no_workout"
-            notes: Resolve the current exercise from the active session and return its stored description as stored_explanation. If there is no current exercise or description, say so; do not generate an explanation.
-          - match_type: template
-            phrases: ["explain {exercise}", "how do i do {exercise}"]
-            slots: *exercise_slot
-            notes: "'this' resolves to the current exercise."
-        response: "{stored_explanation}"
-        notes: Named exercises use a stored explanation if one exists; otherwise AI explains.
       - id: alternate_exercise
         match_type: exact
         phrases: [alternate, alternate this, alternate exercise]
