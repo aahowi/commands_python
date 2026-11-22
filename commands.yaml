@@ -218,75 +218,8 @@ groups:
         response: Okay.
         notes: Works in any state. Synonyms such as never mind are normalized to cancel.
 
-      - id: help
-        notes: Variants are checked top to bottom, so the specific "help me with ..." phrases come before the wildcard help. help_about_this_exercise (active session only, uses the current exercise) comes before help_about_exercise (named exercise, any state).
-        variants:
-          - id: help_about_app
-            match_type: template
-            requires_state: any
-            phrases:
-              - help me with this app
-              - help me with this website
-              - help me with this site
-              - help me use this app
-              - help with the app
-              - how do i use this app
-              - how do i use this website
-              - how do i use this site
-              - how does this app work
-              - what is this app
-            response: "This app lets you run workouts by voice or typing. Say help for the list of commands."
-          - id: help_about_this_exercise
-            match_type: template
-            requires_state: workout_active
-            engine: python
-            fn: explain_exercise
-            phrases:
-              - help me with this exercise
-              - help me with this
-              - help with this exercise
-              - help with this
-              - help me do this exercise
-              - help me do this
-              - help me perform this exercise
-              - help me understand this exercise
-              - help me understand how to do this exercise
-              - help me understand how to do this
-              - help me with this movement
-            response: "{stored_explanation}"
-            notes: Only valid inside an active session. No exercise name is spoken; the exercise is the current one from the active session. Handled by explain_exercise (defined below in control). At home this does not match and falls through to the wildcard help below. Not the same as help_about_exercise, which is named and works in any state.
-          - id: help_about_exercise
-            match_type: template
-            requires_state: any
-            engine: python_then_ai
-            fn: explain_exercise
-            phrases:
-              - "help me understand how to do {exercise}"
-              - "help me understand {exercise}"
-              - "help me with {exercise} form"
-              - "help me with {exercise}"
-              - "help me do {exercise}"
-              - "help me perform {exercise}"
-              - "help with {exercise}"
-            slots:
-              - {name: exercise, type: exercise, required: true}
-            response: "{stored_explanation}"
-            notes: The user names the exercise, so it works in any state. Handled by explain_exercise (defined below in control). Falls through to plain help if the name is not an exercise.
-          - id: show_help_home
-            follow_up: false
-            match_type: contains_word   # wildcard - any input containing the word "help" that no variant above matched
-            phrases: [help]
-            requires_state: none
-            response: "You can say: start next workout, start workout [name], free ball, build new workout, what's next, list my workouts, list my routines, list exercises in [workout name], last time I did [exercise], PR for [exercise], how many workouts this week. You can also ask me questions."
-          - id: show_help_active
-            follow_up: false
-            match_type: contains_word   # wildcard, same as show_help_home
-            phrases: [help]
-            requires_state: workout_active
-            response: "During a workout you can say: log it, done, 135 for 8, up 5, down 5, skip rest, skip set, skip exercise, skip block, end workout, too easy, too hard, explain this exercise, alternate, no dumbbells, status, undo. You can also ask me questions."
-
       - id: explain_exercise
-        description: Explains an exercise. "this" means the current exercise in the active session; a named exercise works in any state. help_about_this_exercise and help_about_exercise route here too.
+        description: Explains an exercise, including "help me with ..." wording. "this" means the current exercise in the active session; a named exercise works in any state. Placed above help so these phrases win over the wildcard help.
         response: "{stored_explanation}"
         notes: Named exercises use a stored explanation if one exists; otherwise AI explains. Information only, it changes nothing.
         variants:
@@ -304,15 +237,66 @@ groups:
               - how to perform this exercise
               - tell me about this exercise
               - what's this exercise
+              - help me with this exercise
+              - help me with this
+              - help with this exercise
+              - help with this
+              - help me do this exercise
+              - help me do this
+              - help me perform this exercise
+              - help me understand this exercise
+              - help me understand how to do this exercise
+              - help me understand how to do this
+              - help me with this movement
             wrong_state_response: "@no_workout"
             notes: Resolve the current exercise from the active session and return its stored description as stored_explanation. If there is no current exercise or description, say so; do not generate an explanation.
           - match_type: template
             requires_state: any
             engine: python_then_ai
-            phrases: ["explain {exercise}", "how do i do {exercise}"]
+            phrases:
+              - "explain {exercise}"
+              - "how do i do {exercise}"
+              - "help me understand how to do {exercise}"
+              - "help me understand {exercise}"
+              - "help me with {exercise} form"
+              - "help me with {exercise}"
+              - "help me do {exercise}"
+              - "help me perform {exercise}"
+              - "help with {exercise}"
             slots:
               - {name: exercise, type: exercise, required: true}
-            notes: Named exercise, so it works at home or in a workout.
+            notes: Named exercise, so it works at home or in a workout. If the name is not a known exercise this must not match; the input falls through to the wildcard help.
+
+      - id: help
+        notes: Variants are checked top to bottom, so help_about_app comes before the wildcard help. Exercise questions such as "help me with this exercise" or "help me with bench press" are handled by explain_exercise, which sits above this intent.
+        variants:
+          - id: help_about_app
+            match_type: template
+            requires_state: any
+            phrases:
+              - help me with this app
+              - help me with this website
+              - help me with this site
+              - help me use this app
+              - help with the app
+              - how do i use this app
+              - how do i use this website
+              - how do i use this site
+              - how does this app work
+              - what is this app
+            response: "This app lets you run workouts by voice or typing. Say help for the list of commands."
+          - id: show_help_home
+            follow_up: false
+            match_type: contains_word   # wildcard - any input containing the word "help" that no variant above matched
+            phrases: [help]
+            requires_state: none
+            response: "You can say: start next workout, start workout [name], free ball, build new workout, what's next, list my workouts, list my routines, list exercises in [workout name], last time I did [exercise], PR for [exercise], how many workouts this week. You can also ask me questions."
+          - id: show_help_active
+            follow_up: false
+            match_type: contains_word   # wildcard, same as show_help_home
+            phrases: [help]
+            requires_state: workout_active
+            response: "During a workout you can say: log it, done, 135 for 8, up 5, down 5, skip rest, skip set, skip exercise, skip block, end workout, too easy, too hard, explain this exercise, alternate, no dumbbells, status, undo. You can also ask me questions."
 
       - id: repeat_last_reply
         follow_up: false
