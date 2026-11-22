@@ -223,6 +223,7 @@ groups:
         variants:
           - id: help_about_app
             match_type: template
+            requires_state: any
             phrases:
               - help me with this app
               - help me with this website
@@ -231,6 +232,7 @@ groups:
             response: "This app lets you run workouts by voice or typing. Say help for the list of commands."
           - id: help_about_exercise
             match_type: template
+            requires_state: any
             engine: python_then_ai
             fn: explain_exercise
             phrases:
