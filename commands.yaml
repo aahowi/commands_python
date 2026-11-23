@@ -168,6 +168,11 @@ follow_up:
   state_defaults:
     none: [start next workout, list my workouts]
     workout_active: [log it, skip exercise]
+  # Used instead of the template while the active workout is Free Ball (Python
+  # sets the `free_ball` flag). Replaces the whole question with a hint on how
+  # to log. Intent or group `follow_up: false` and `next_options` still apply first.
+  free_ball:
+    message: "In Free Ball, just log what you did: Done, Bicep Curls, 10 at 65, RPE5"
 
 groups:
   # ---------------------------------------------------------------- safety
