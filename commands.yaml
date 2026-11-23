@@ -296,7 +296,7 @@ groups:
             match_type: contains_word   # wildcard, same as show_help_home
             phrases: [help]
             requires_state: workout_active
-            response: "During a workout you can say: log it, done, 135 for 8, up 5, down 5, skip rest, skip set, skip exercise, skip block, end workout, too easy, too hard, explain this exercise, alternate, no dumbbells, status, undo. You can also ask me questions."
+            response: "During a workout you can say: log it, done, 135 for 8, up 5, down 5, skip rest, skip set, skip exercise, skip block, end workout, too easy, too hard, explain this exercise, alternate, no dumbbells, status, what's going on, undo. You can also ask me questions."
 
       - id: repeat_last_reply
         follow_up: false
@@ -542,7 +542,23 @@ groups:
     defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
     intents:
       - {id: rest_time_left, phrases: [how long left on rest], response: "{rest_remaining} seconds of rest left."}
-      - {id: session_status, phrases: [status, where am i], response: "{exercise}, set {set_number} of {total_sets}. {sets_left} sets left."}
+      - id: session_status
+        phrases:
+          - status
+          - where am i
+          - where are we
+          - what's going on
+          - what's going on now
+          - what are we doing
+          - what are we doing now
+          - what session are we in
+          - what workout is this
+          - what workout am i in
+          - what exercise am i on
+          - what am i on
+          - current status
+          - current exercise
+        response: "{exercise}, set {set_number} of {total_sets}. {sets_left} sets left."
       - {id: sets_left, phrases: [how many sets left], response: "{sets_left} sets left in this workout."}
       - {id: time_left, phrases: [how long is this workout, how much time is left], response: "About {minutes_left} minutes left."}
 
