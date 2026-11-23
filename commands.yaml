@@ -290,13 +290,13 @@ groups:
             match_type: contains_word   # wildcard - any input containing the word "help" that no variant above matched
             phrases: [help]
             requires_state: none
-            response: "You can say: start next workout, start workout [name], free ball, build new workout, what's next, list my workouts, list my routines, list exercises in [workout name], last time I did [exercise], PR for [exercise], how many workouts this week. You can also ask me questions."
+            response: "You can say: start next workout, start workout [name], free ball, build new workout, list my workouts, list my routines, list exercises in [workout name], status. You can also ask me questions."
           - id: show_help_active
             follow_up: false
             match_type: contains_word   # wildcard, same as show_help_home
             phrases: [help]
             requires_state: workout_active
-            response: "During a workout you can say: log it, done, 135 for 8, up 5, down 5, skip rest, skip set, skip exercise, skip block, end workout, too easy, too hard, explain this exercise, alternate, no dumbbells, status, what's going on, undo. You can also ask me questions."
+            response: "During a workout you can say: log it, done, 135 for 8, status, skip rest, skip exercise, end workout, explain this exercise, alternate, no dumbbells, what's going on. You can also ask me questions."
 
       - id: repeat_last_reply
         follow_up: false
