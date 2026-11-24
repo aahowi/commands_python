@@ -563,7 +563,9 @@ groups:
           - what am i on
           - current status
           - current exercise
-        response: "{exercise}, set {set_number} of {total_sets}. {sets_left} sets left."
+        next_options: [done on target, skip exercise]
+        response: "{exercise}, {metrics}."
+        notes: Basic metrics only, no set info. Python fills {metrics} from the current exercise, for example "100 lb, 10 reps" for a weighted exercise or "40s" for a timed one.
       - {id: sets_left, phrases: [how many sets left], response: "{sets_left} sets left in this workout."}
       - {id: time_left, phrases: [how long is this workout, how much time is left], response: "About {minutes_left} minutes left."}
 
