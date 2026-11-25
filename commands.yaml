@@ -437,7 +437,13 @@ groups:
         requires_state: any
         wrong_state_response: null
         phrases: [build new workout]
-        response: Opening the workout builder.
+        response: This feature not available yet via text. Checkout the website.
+      - id: pro_rotations
+        requires_state: any
+        wrong_state_response: null
+        phrases: [pro rotations]
+        response: This feature not available yet via text. Checkout the website.
+        notes: Same reply as build_new_workout, kept as its own intent so it can change separately.
       - id: whats_next
         phrases: [what's next]
         variants:
