@@ -497,11 +497,11 @@ groups:
     intents:
       - id: log_current_set
         phrases: [log it, done, done on target, as planned]
-        response: "Logged {exercise}: {planned}."
+        response: "Logged {exercise}: {planned}.\n\nUp next: *{next_exercise}*, {next_reps} reps."
         wrong_state_response: "@no_workout_start"
       - id: log_same_as_last
         phrases: [same again, same as last set]
-        response: "Logged the same as the last set: {weight} x {reps}."
+        response: "Logged the same as the last set: {weight} x {reps}.\n\nUp next: *{next_exercise}*, {next_reps} reps."
 
   # -------------------------------------------------------------- skipping
   - id: skipping
@@ -672,10 +672,10 @@ groups:
           - {name: weight, type: number, required: true}
           - {name: reps, type: number, required: true}
           - {name: rpe, type: number, required: false}
-        response: Logged {weight} x {reps}.
+        response: "Logged {weight} x {reps}.\n\nUp next: *{next_exercise}*, {next_reps} reps."
         wrong_state_response: null
         variants:
-          - {when_rpe_required: true, response: "Logged {weight} x {reps} at RPE {rpe}."}
+          - {when_rpe_required: true, response: "Logged {weight} x {reps} at RPE {rpe}.\n\nUp next: *{next_exercise}*, {next_reps} reps."}
       - id: set_rpe
         phrases: ["rpe {rpe}"]
         slots: [{name: rpe, type: number, required: true}]
@@ -705,7 +705,7 @@ groups:
     intents:
       - id: log_current_set
         phrases: [book it, nailed it, smashed it]
-        response: "Logged {exercise}: {planned}."
+        response: "Logged {exercise}: {planned}.\n\nUp next: *{next_exercise}*, {next_reps} reps."
       - id: clarify_end_workout
         phrases: [wrap it up, call it a day]
         opens: confirm_end
