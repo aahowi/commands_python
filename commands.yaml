@@ -25,7 +25,7 @@ pending_questions:
   print_scope: Print the exercise or the whole workout?
   skip_target: Skip this exercise or this block?
   confirm_end: End this workout?
-  confirm_change: Apply a proposed change (weight, equipment swap, alternate, AI suggestion).
+  confirm_change: Apply a change the AI proposed.
   confirm_log_value: Save a value that failed the sanity check.
   choose_option: Pick one of two did-you-mean candidates.
   choose_workout:
@@ -40,7 +40,7 @@ pending_questions:
 #   3. word synonyms   4. number words -> digits (21 and up are combined in code)
 # Format of each synonym group: canonical: [synonyms]
 # A synonym with a space is phrase level; a single word is word level.
-# Word level is what makes "swap this" become "alternate this".
+# Word level is what makes "fix last set" become "change last set".
 # Keep colon-formatted values intact until the intent and slot are known:
 # interpret M:SS as a duration in a duration slot, but concatenate digits in a
 # workout weight slot (so "1:30" means 130). Ask if the context is ambiguous.
@@ -118,8 +118,6 @@ normalization:
       up: [add, plus, raise, increase, bump]
     down:
       down: [drop, lower, decrease, reduce, take off]   # "take off 5" -> "down 5"
-    alternate:
-      alternate: [swap, switch, replace]
     help:
       help: [commands, what can i say, what can you do, what can i do, i need help, can you help, what are my options, show commands, list commands, show help]
     repeat:
@@ -181,7 +179,7 @@ groups:
     priority: 1
     follow_up: false
     defaults: {match_type: keyword, requires_state: any, engine: python}
-    notes: Whole word match only. One reply for everything. No advice, no alternates, no interpretation. To swap an exercise for another reason use wording like "alternate this".
+    notes: Whole word match only. One reply for everything. No advice, no alternates, no interpretation.
     intents:
       - id: safety_stop
         response: "@stop_medical"
@@ -301,7 +299,7 @@ groups:
             match_type: contains_word   # wildcard, same as show_help_home
             phrases: [help]
             requires_state: workout_active
-            response: "During a workout you can say: log it, done, 135 for 8, status, skip rest, skip exercise, end workout, explain this exercise, alternate, no dumbbells, what's going on. You can also ask me questions."
+            response: "During a workout you can say: log it, done, 135 for 8, status, skip rest, skip exercise, end workout, explain this exercise, what's going on. You can also ask me questions."
 
       - id: repeat_last_reply
         follow_up: false
@@ -339,7 +337,7 @@ groups:
           - {phrases: ["no"], fn: cancel_pending, response: "Okay, still going."}
       - id: answer_confirm_change
         expects: confirm_change
-        notes: Applies or rejects the change the app proposed (weight, equipment swap, alternate, AI suggestion).
+        notes: Applies or rejects the change the AI proposed.
         variants:
           - {phrases: ["yes"], fn: apply_pending_change, response: Done.}
           - {phrases: ["no"], fn: cancel_pending, response: "Okay, no change made."}
@@ -611,41 +609,6 @@ groups:
       - {id: volume_last_week, match_type: exact, phrases: [how much did i lift last week, how much weight did i lift last week, what's my volume last week, total volume last week], response: "Total volume last week: {volume} {unit}."}
 
   # ------------------------------------------- python first, AI as backup
-  - id: coaching_changes
-    description: Changes the workout on request. Swapping an exercise, adjusting for missing equipment or limited time, and too easy or too hard. Python tries first and AI only steps in if needed. Changes ask for confirmation.
-    priority: 3
-    defaults: {requires_state: workout_active, engine: python_then_ai}
-    intents:
-      - id: alternate_exercise
-        match_type: exact
-        phrases: [alternate, alternate this, alternate exercise]
-        opens: confirm_change
-        response: Swap in {alternate}?
-        notes: Stored alternates first. Otherwise AI suggests one.
-      - id: equipment_swap
-        match_type: template
-        phrases: ["no {equipment}", "no {equipment} today", "no {equipment} available today"]
-        slots:
-          - {name: equipment, type: equipment, required: true}
-        opens: confirm_change
-        response: Swap out anything that needs {equipment}?
-        notes: Python filters the exercise library by equipment first. AI only if nothing matches.
-      - id: time_limit_adjust
-        match_type: template
-        phrases: ["i only have {minutes} minutes", "only {minutes} minutes"]
-        slots:
-          - {name: minutes, type: number, required: true}
-        opens: confirm_change
-        response: Shorten the workout to about {minutes} minutes?
-        notes: Python drops accessory work first. AI only if that is not enough.
-      - id: feedback
-        match_type: exact
-        opens: confirm_change
-        notes: Python rule first. AI only if no rule applies.
-        variants:
-          - {fn: feedback_too_easy, phrases: [too easy, too light], response: "Raise the next set by {increase} {unit}?"}
-          - {fn: feedback_too_hard, phrases: [too hard, too heavy], response: "Lower the next set by {decrease} {unit}?"}
-
   # ------------------------------------------------------ patterns / edits
   - id: patterns
     description: Reads numbers from what the user says, such as "80 for 3" or "up 5". It logs sets, adds RPE, fixes the last set, and changes the next weight or reps without asking for confirmation.
