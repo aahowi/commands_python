@@ -20,13 +20,16 @@ states:
   workout_active: A workout is running.
   any: Either page.
 
-# A question the app asked that the next reply answers.
+# A question the app asked that the next reply answers. Ask dependent questions
+# one at a time: resolve the current pending question before opening the next
+# or sending the deferred command reply. Safety responses still take priority.
 pending_questions:
   print_scope: Print the exercise or the whole workout?
   skip_target: Skip this exercise or this block?
   confirm_end: End this workout?
   confirm_change: Apply a change the AI proposed.
   confirm_log_value: Save a value that failed the sanity check.
+  confirm_next_plan: Make this the plan for next time?
   choose_option: Pick one of two did-you-mean candidates.
   choose_workout:
     description: Pick a workout from a short numbered list, by number or by name.
@@ -369,9 +372,18 @@ groups:
           - {phrases: ["no"], fn: cancel_pending, response: "Okay, no change made."}
       - id: answer_confirm_log_value
         expects: confirm_log_value
+        notes: If confirmed, continue the logging flow without sending the Saved response separately; ask confirm_next_plan when applicable before sending the deferred logging reply. If rejected, do not log or ask to change the plan.
         variants:
           - {phrases: ["yes"], fn: confirm_logged_value, response: Saved., notes: Saves a value that failed the sanity check.}
           - {phrases: ["no"], fn: cancel_pending, response: Not saved. Tell me the set again.}
+      - id: answer_confirm_next_plan
+        expects: confirm_next_plan
+        follow_up: false
+        wrong_answer_response: "Please say yes or no."
+        notes: Keep this question pending on an invalid answer. The deferred logging reply includes its normal follow-up. If updating the plan fails, report the error rather than claiming success.
+        variants:
+          - {phrases: ["yes"], fn: confirm_next_plan, response: "{deferred_logging_response}", notes: Update the original exercise's future target to the logged metrics, then send the deferred logging reply.}
+          - {phrases: ["no"], fn: decline_next_plan, response: "{deferred_logging_response}", notes: Leave the future target unchanged, then send the deferred logging reply.}
       - id: answer_choose_option
         expects: choose_option
         fn: run_pending_choice
@@ -556,6 +568,7 @@ groups:
     description: Records a set during a workout as planned or the same as the last set.
     priority: 3
     defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
+    notes: After logging, compare the logged metrics with the target metrics for the exercise being logged. If they differ, retain the exercise, logged metrics and complete logging reply (including its normal follow-up), open confirm_next_plan, and send only "Make this the plan for next time?" until it is answered. Otherwise send the normal logging reply. Apply this flow to all logging paths, including patterns.log_metrics and fuzzy_synonyms.log_current_set. Resolve any confirm_log_value first.
     intents:
       - id: log_current_set
         phrases: [log it, done, done on target, as planned]
@@ -701,7 +714,7 @@ groups:
     defaults: {match_type: pattern, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
     intents:
       - id: log_metrics
-        notes: Weights outside the sanity range open confirm_log_value. Phrase order matters (RPE pattern before the shorter "for"). In a workout weight slot, concatenate colon-formatted digits (1:30 means 130); keep the colon intact for other contexts.
+        notes: Weights outside the sanity range open confirm_log_value. After confirmation and successful logging, follow the confirm_next_plan flow described in logging_sets if metrics differ from the target. Phrase order matters (RPE pattern before the shorter "for"). In a workout weight slot, concatenate colon-formatted digits (1:30 means 130); keep the colon intact for other contexts.
         phrases:
           - text: "{weight}@{reps}"
             notes: Parses 8@135.
