@@ -459,23 +459,61 @@ groups:
 
   # ---------------------------------------------------------------- lists
   - id: lists
-    description: Reads out your rotations, workouts, or the exercises in a workout.
+    description: Reads out your rotations, workouts, or the exercises in a workout. Home_Coach lists rotations, the workouts in a named rotation, and the exercises in a named workout. workout_active lists the exercises in the current workout only.
     priority: 3
-    defaults: {requires_state: any, engine: python}
+    defaults: {engine: python}
     intents:
-      - {id: list_rotations, match_type: exact, phrases: [list my rotations], response: Here are your rotations.}
-      - {id: list_workouts, match_type: exact, phrases: [list my workouts], response: Here are your workouts.}
+      - id: list_rotations
+        match_type: exact
+        requires_state: Home_Coach
+        phrases:
+          - list my rotations
+          - show my rotations
+          - what rotations do i have
+          - what are my rotations
+        response: Here are your rotations.
+      - id: list_workouts
+        match_type: exact
+        requires_state: Home_Coach
+        phrases:
+          - list my workouts
+          - show my workouts
+          - what workouts do i have
+        response: Here are your workouts.
+        notes: Lists every workout across all rotations.
+      - id: list_workouts_in_rotation
+        match_type: template
+        requires_state: Home_Coach
+        phrases:
+          - "list workouts in {rotation_name}"
+          - "what workouts are in {rotation_name}"
+          - "show workouts in {rotation_name}"
+          - "show me {rotation_name} workouts"
+        slots:
+          - {name: rotation_name, type: text, required: true}
+        response: "Workouts in {rotation_name}: {workout_list}."
+        notes: Name matched the same way as start workout. A close but uncertain rotation_name goes to near_match.
       - id: list_exercises_in_workout
         match_type: template
-        phrases: ["list exercises in {workout_name}"]
+        requires_state: Home_Coach
+        phrases:
+          - "list exercises in {workout_name}"
+          - "what exercises are in {workout_name}"
+          - "show exercises in {workout_name}"
+          - "show me the exercises in {workout_name}"
         slots:
           - {name: workout_name, type: text, required: true}
         response: "Exercises in {workout_name}: {exercise_list}."
-        notes: Name matched the same way as start workout.
+        notes: Name matched the same way as start workout. A close but uncertain workout_name goes to near_match.
       - id: list_current_exercises
         match_type: exact
         requires_state: workout_active
-        phrases: [list exercises]
+        phrases:
+          - list exercises
+          - list exercises in this workout
+          - what exercises are in this workout
+          - show exercises
+          - what's in this workout
         response: "Exercises in this workout: {exercise_list}."
         wrong_state_response: "@no_workout"
 
@@ -678,7 +716,7 @@ groups:
 
   # ------------------------------------------------------------ near match
   - id: near_match
-    description: When something is close but not certain, it offers two guesses and asks the user to say 1 or 2.
+    description: When something is close but not certain, it offers two guesses and asks the user to say 1 or 2. Covers any name lookup, including rotation names (list_workouts_in_rotation) and workout names (list_exercises_in_workout, start workout by name).
     priority: 6
     defaults: {requires_state: any, engine: python}
     intents:
@@ -687,7 +725,7 @@ groups:
         phrases: ["*"]
         opens: choose_option
         response: Did you mean {choice_1} or {choice_2}? Say 1 or 2.
-        notes: Runs when a fuzzy or name match is close but not certain. Stores the top two candidates.
+        notes: Runs when a fuzzy or name match is close but not certain. Stores the top two candidates plus the original intent and its other slots, so answer_choose_option (in pending_answers) can re-run the same request (e.g. list_workouts_in_rotation) with the chosen name filled in.
 
   # -------------------------------------------------------------------- AI
   - id: ai
