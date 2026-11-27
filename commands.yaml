@@ -301,7 +301,7 @@ groups:
             match_type: contains_word   # wildcard, same as show_help_home
             phrases: [help]
             requires_state: workout_active
-            response: "During a workout you can say: log it, done, 135 for 8, status, skip rest, skip exercise, end workout, explain this exercise, what's going on. You can also ask me questions."
+            response: "During a workout you can say: log it, done, 135 for 8, status, skip rest, skip exercise, pause, resume, end workout, explain this exercise, what's going on. You can also ask me questions."
 
       - id: repeat_last_reply
         follow_up: false
@@ -541,24 +541,44 @@ groups:
         phrases: [same again, same as last set]
         response: "Logged the same as the last set: {weight} x {reps}.\n\nUp next: *{next_exercise}*, {next_reps} reps."
 
-  # -------------------------------------------------------------- skipping
-  - id: skipping
-    description: Moves around a workout by skipping a set, exercise, block or rest, or ends the workout after asking for confirmation.
+  # ------------------------------------------------------------ navigation
+  - id: navigation
+    description: Moves around a workout by skipping a set, exercise, block or rest; pausing and resuming; or ending the workout after asking for confirmation.
     priority: 3
     defaults: {match_type: exact, requires_state: workout_active, engine: python, wrong_state_response: "@no_workout"}
     intents:
-      - {id: clarify_skip_target, phrases: [skip, next], opens: skip_target, response: "Skip this exercise or this block?"}
-      - {id: skip_exercise, phrases: [skip exercise, next exercise], response: Skipping to the next exercise.}
-      - {id: skip_block, phrases: [skip block, next block], response: Skipping to the next block.}
-      - {id: skip_set, phrases: [skip set], response: Skipped this set., notes: Skips only the current set.}
-      - id: clarify_end_workout
-        phrases: [end, end workout]
-        opens: confirm_end
-        response: End this workout? Say yes to confirm.
+      - id: clarify_skip_target
+        phrases: [skip, next, move on, skip this]
+        opens: skip_target
+        response: "Skip this exercise or this block?"
+      - id: skip_exercise
+        phrases: [skip exercise, next exercise, skip this exercise, move to the next exercise]
+        response: Skipping to the next exercise.
+      - id: skip_block
+        phrases: [skip block, next block, skip this block, move to the next block]
+        response: Skipping to the next block.
+      - id: skip_set
+        phrases: [skip set, skip this set]
+        response: Skipped this set.
+        notes: Skips only the current set.
       - id: skip_rest
-        phrases: [skip rest]
+        phrases: [skip rest, skip the rest, skip my rest]
         response: "Rest skipped. Next up: {next_exercise}."
         notes: The rest timer starts on its own after each set, so there is no start command. Skip rest ends the timer and moves to the next exercise.
+      - id: pause_workout
+        phrases: [pause, pause workout, pause this workout, hold on, hang on]
+        response: Workout paused. Say resume when you're ready to continue.
+        notes: Python tracks the paused flag on the session; timers and rest should hold while paused.
+      - id: resume_workout
+        phrases: [resume, resume workout, unpause, continue workout, keep going]
+        response: Resuming the workout.
+        wrong_state_response: "The workout isn't paused."
+        notes: Only valid while the session is paused. If not paused, use wrong_state_response (a separate check from @no_workout, which covers no workout running at all).
+      - id: clarify_end_workout
+        phrases: [end, end workout, end this workout, end my workout, i'm done]
+        opens: confirm_end
+        response: End this workout? Say yes to confirm.
+        notes: "finish workout, stop workout, end session, quit workout, finish up all normalize to end workout (see normalization.synonyms.finish), so they are not repeated here."
 
   # ---------------------------------------------------------------- timers
   - id: timers
