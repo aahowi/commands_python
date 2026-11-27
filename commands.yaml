@@ -110,6 +110,8 @@ normalization:
     unit_time:
       seconds: [sec, secs]
       minutes: [min, mins, minute]           # "minutes" is already canonical
+    rotations:
+      rotations: [rotation, routines, routine]
     change:
       change: [fix, edit, update, modify]
     fewer:
@@ -293,7 +295,7 @@ groups:
             match_type: contains_word   # wildcard - any input containing the word "help" that no variant above matched
             phrases: [help]
             requires_state: Home_Coach
-            response: "You can say: start next workout, start workout [name], free ball, build new workout, list my workouts, list my routines, list exercises in [workout name], status. You can also ask me questions."
+            response: "You can say: start next workout, start workout [name], free ball, build new workout, list my workouts, list my rotations, list exercises in [workout name], status. You can also ask me questions."
           - id: show_help_active
             follow_up: false
             match_type: contains_word   # wildcard, same as show_help_home
@@ -457,11 +459,11 @@ groups:
 
   # ---------------------------------------------------------------- lists
   - id: lists
-    description: Reads out your routines, workouts, or the exercises in a workout.
+    description: Reads out your rotations, workouts, or the exercises in a workout.
     priority: 3
     defaults: {requires_state: any, engine: python}
     intents:
-      - {id: list_routines, match_type: exact, phrases: [list my routines], response: Here are your routines.}
+      - {id: list_rotations, match_type: exact, phrases: [list my rotations], response: Here are your rotations.}
       - {id: list_workouts, match_type: exact, phrases: [list my workouts], response: Here are your workouts.}
       - id: list_exercises_in_workout
         match_type: template
