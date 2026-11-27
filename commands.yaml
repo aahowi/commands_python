@@ -568,6 +568,7 @@ groups:
       - id: pause_workout
         phrases: [pause, pause workout, pause this workout, hold on, hang on]
         response: Workout paused. Say resume when you're ready to continue.
+        wrong_state_response: "@no_workout"
         notes: Python tracks the paused flag on the session; timers and rest should hold while paused.
       - id: resume_workout
         phrases: [resume, resume workout, unpause, continue workout, keep going]
