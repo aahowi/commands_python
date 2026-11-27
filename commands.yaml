@@ -16,7 +16,7 @@
 version: 1
 
 states:
-  none: No workout is running (home page).
+  Home_Coach: No workout is running (home page).
   workout_active: A workout is running.
   any: Either page.
 
@@ -156,7 +156,7 @@ shared_responses:
 # Python builds it as: reply + " " + template filled from the first two options.
 # Option lookup, first hit wins: intent `next_options`, group `next_options`,
 # then state_defaults for the state AFTER the command ran (so "Workout ended."
-# uses the `none` options). Options are phrases the user can say as written.
+# uses the `Home_Coach` options). Options are phrases the user can say as written.
 # Set `follow_up: false` on a group or intent to leave the question off.
 # Never added to: a reply that opens a pending question (it already asks one),
 # safety replies, help, repeat, wrong_answer_response, or any reply with
@@ -164,7 +164,7 @@ shared_responses:
 follow_up:
   template: "What would you like to do next: {option_a} or {option_b}?"
   state_defaults:
-    none: [start next workout, list my workouts]
+    Home_Coach: [start next workout, list my workouts]
     workout_active: [log it, skip exercise]
   # Used instead of the template while the active workout is Free Ball (Python
   # sets the `free_ball` flag). Replaces the whole question with a hint on how
@@ -292,7 +292,7 @@ groups:
             follow_up: false
             match_type: contains_word   # wildcard - any input containing the word "help" that no variant above matched
             phrases: [help]
-            requires_state: none
+            requires_state: Home_Coach
             response: "You can say: start next workout, start workout [name], free ball, build new workout, list my workouts, list my routines, list exercises in [workout name], status. You can also ask me questions."
           - id: show_help_active
             follow_up: false
@@ -411,7 +411,7 @@ groups:
   - id: home_commands
     description: Home-page commands. Starting a workout (next, by name, or free ball), opening the builder, and asking what is next.
     priority: 3
-    defaults: {match_type: exact, requires_state: none, engine: python, wrong_state_response: "@workout_running"}
+    defaults: {match_type: exact, requires_state: Home_Coach, engine: python, wrong_state_response: "@workout_running"}
     intents:
       - id: start_next_workout
         phrases: [start next workout]
@@ -446,7 +446,7 @@ groups:
         phrases: [what's next]
         variants:
           - id: whats_next_workout
-            requires_state: none
+            requires_state: Home_Coach
             phrases: [what's next, what's next workout]
             response: Your next workout is {next_workout}.
           - id: whats_next_exercise
