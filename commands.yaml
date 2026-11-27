@@ -175,9 +175,33 @@ follow_up:
     message: "In Free Ball, just log what you did: Done, Bicep Curls, 10 at 65, RPE5"
 
 groups:
+  # ----------------------------------------------------------------- notes
+  - id: notes
+    description: Lets the user add a free-text note to the active workout. Only activates when the message explicitly starts with a note prefix (note:, notes:, note,, notes,, or make a note), so plain conversation never gets captured as a note. Notes append to the active workout in the order received and are read back from history after the workout is saved. Not available outside workout_active.
+    priority: 1
+    follow_up: false
+    defaults: {match_type: template, requires_state: workout_active, engine: python, wrong_state_response: "Notes can only be added during an active workout."}
+    notes: Listed before the safety group so a prefixed message is saved as a note first. fn add_workout_note must save {note_text}, then run it through the same safety keyword list as group safety (not the safety group itself, to avoid a second, separate reply). If a safety word is found, append "@stop_medical" to the reply after "Note added." so the stop message still shows, just after the note is saved. This group does not consume anything the safety group would also want; it only matches the explicit prefixes below.
+    intents:
+      - id: add_workout_note
+        fn: add_workout_note
+        phrases:
+          - "note: {note_text}"
+          - "notes: {note_text}"
+          - "note, {note_text}"
+          - "notes, {note_text}"
+          - "make a note: {note_text}"
+          - "make a note, {note_text}"
+          - "make a note that {note_text}"
+          - "make a note {note_text}"
+        slots:
+          - {name: note_text, type: text, required: true}
+        response: "Note added."
+        notes: "If note_text matches any safety keyword, the reply becomes \"Note added. @stop_medical\" instead of just \"Note added.\" Save the note either way; never drop it because of the safety check."
+
   # ---------------------------------------------------------------- safety
   - id: safety
-    description: Controls liability. If someone mentions pain, dizziness, injury or similar, it stops everything and tells them to get help from a qualified professional. It gives no advice and always wins over every other command.
+    description: Controls liability. If someone mentions pain, dizziness, injury or similar, it stops everything and tells them to get help from a qualified professional. It gives no advice and always wins over every other command. Does not run on text already captured as a note by group notes; that group checks the same keywords itself after saving.
     priority: 1
     follow_up: false
     defaults: {match_type: keyword, requires_state: any, engine: python}
@@ -301,7 +325,7 @@ groups:
             match_type: contains_word   # wildcard, same as show_help_home
             phrases: [help]
             requires_state: workout_active
-            response: "During a workout you can say: log it, done, 135 for 8, status, skip rest, skip exercise, pause, resume, end workout, explain this exercise, what's going on. You can also ask me questions."
+            response: "During a workout you can say: log it, done, 135 for 8, status, skip rest, skip exercise, pause, resume, end workout, explain this exercise, what's going on, note: [your note]. You can also ask me questions."
 
       - id: repeat_last_reply
         follow_up: false
